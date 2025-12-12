@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(mmorpg LANGUAGES CXX)
+project(mmorpg LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,8 @@ set_target_properties(wgpu-native PROPERTIES
      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/external/wgpu-native/include"
 )
 
+add_subdirectory(external/sdl3webgpu)
+
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 
 add_executable(mmorpg ${SRC_FILES})
@@ -24,6 +26,7 @@ target_link_libraries(mmorpg PRIVATE
     SDL3::SDL3
     Boost::system
     wgpu-native
+    sdl3webgpu
 )
 
 if (MSVC)

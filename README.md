@@ -18,8 +18,9 @@ export CMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
 vcpkg install sdl3 boost-asio
 ```
 
+5. copy sdl3webgpu.c, sdl3webgpu.h and CMakeLists.txt from https://github.com/eliemichel/sdl3webgpu/ to `external/sdl3webgpu`
 
-5. 
+6. 
 ```sh
 mkdir build
 cd build
