@@ -33,7 +33,7 @@ WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions 
         else
         {
             // std::throw_with_nested(std::runtime_error("Couldn't create a WebGPU adapter"));
-            std::cout << "no adapter" << std::endl;
+            std::cout << "no adapter" << message.data << std::endl;
         }
         userData.requestEnded = true;
     };
@@ -52,17 +52,70 @@ WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions 
     return userData.adapter;
 }
 
+WGPUDevice requestDeviceSync(WGPUAdapter adapter, WGPUDeviceDescriptor const *descriptor)
+{
+    struct UserData
+    {
+        WGPUDevice device = nullptr;
+        bool requestEnded = false;
+    };
+    UserData userData;
+
+    auto onDeviceRequestEnded = [](WGPURequestDeviceStatus status, WGPUDevice device, WGPUStringView message, void *userdata1, void * /*userdata2*/)
+    {
+        UserData &userData = *reinterpret_cast<UserData *>(userdata1);
+        if (status == WGPURequestDeviceStatus_Success)
+        {
+            userData.device = device;
+        }
+        else
+        {
+            std::cout << "Could not get WebGPU device: " << message.data << std::endl;
+        }
+        userData.requestEnded = true;
+    };
+
+    WGPURequestDeviceCallbackInfo callback_info;
+    callback_info.mode = WGPUCallbackMode_AllowProcessEvents;
+    callback_info.callback = onDeviceRequestEnded;
+    callback_info.userdata1 = &userData;
+
+    WGPUFuture device_future = wgpuAdapterRequestDevice(
+        adapter,
+        descriptor,
+        callback_info);
+
+    assert(userData.requestEnded);
+
+    return userData.device;
+}
+
 int main()
 {
     WGPUInstanceDescriptor wgpu_desc = {};
     wgpu_desc.nextInChain = nullptr;
     WGPUInstance instance = wgpuCreateInstance(&wgpu_desc);
+    SDL_Init(SDL_INIT_VIDEO);
+
+    SDL_Window *window = SDL_CreateWindow("MMORPG", 800, 600, SDL_WINDOW_RESIZABLE);
+    WGPUSurface surface = SDL_GetWGPUSurface(instance, window);
     WGPURequestAdapterOptions adapter_options = {};
     adapter_options.nextInChain = nullptr;
     WGPUAdapter adapter = requestAdapterSync(instance, &adapter_options);
-    SDL_Init(SDL_INIT_VIDEO);
+    WGPUDeviceDescriptor device_desc = {};
+    device_desc.nextInChain = nullptr;
+    device_desc.requiredFeatureCount = 0;
+    device_desc.requiredLimits = nullptr;
+    WGPUStringView device_label = {};
+    device_label.data = "Device";
+    device_desc.label = device_label;
+    WGPUStringView default_queue_label = {};
+    default_queue_label.data = "Default queue";
+    device_desc.defaultQueue.label = default_queue_label;
+    device_desc.defaultQueue.nextInChain = nullptr;
 
-    SDL_Window *win = SDL_CreateWindow("MMORPG", 800, 600, SDL_WINDOW_RESIZABLE);
+    WGPUDevice device = requestDeviceSync(adapter, &device_desc);
+    wgpuAdapterRelease(adapter);
 
     SDL_Event event;
     int running = 1;
@@ -78,8 +131,8 @@ int main()
     }
 
     wgpuInstanceRelease(instance);
-    wgpuAdapterRelease(adapter);
-    SDL_DestroyWindow(win);
+    wgpuDeviceRelease(device);
+    SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }
